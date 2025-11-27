@@ -7,43 +7,40 @@ import Observation
 
 @MainActor
 @Observable
+@MainActor
+@Observable
 class ChatViewModel {
-    var messages: [Message] = []
+    // State
+    var transcribedText: String = ""
+    var messages: [Message] = [] // Mantido para histórico de ações, se necessário
     var isRecording = false
     var isProcessing = false
     var errorMessage: String?
+    var showTools = false // Controla a visibilidade do menu de ferramentas
     
     // Dependencies
     private let audioRecorder = AudioRecorder()
     private let openAIClient = OpenAIClient()
     
-    // Configuration (In a real app, this should be stored securely)
+    // Configuration
     @ObservationIgnored @AppStorage("openAIKey") private var openAIKey = ""
     
     init() {
-        // Add initial system message or welcome
-        messages.append(Message(role: .assistant, content: "Hello! I'm your PocketMind. How can I help you today?"))
-        
-        // Observe audio recorder manually or via tracking if needed. 
-        // With @Observable, we might need to handle the binding or updates differently if AudioRecorder is also @Observable.
-        // However, since we are inside a class, we don't get auto-updates from another @Observable class unless we observe it in a View.
-        // For simplicity in this ViewModel, we will sync state manually or expose the recorder.
-        // But to keep it simple and working:
+        // Estado inicial limpo
     }
     
-    // Helper to sync recording state (since we can't easily use .assign with @Observable without Combine)
-    func checkRecordingStatus() {
-        self.isRecording = audioRecorder.isRecording
-    }
+    // MARK: - Recording Logic
     
     func toggleRecording() {
         if audioRecorder.isRecording {
             audioRecorder.stopRecording()
-            self.isRecording = false // Sync state
+            self.isRecording = false
             processRecording()
         } else {
             audioRecorder.startRecording()
-            self.isRecording = true // Sync state
+            self.isRecording = true
+            self.transcribedText = "" // Limpa texto anterior ao iniciar nova gravação
+            self.errorMessage = nil
         }
     }
     
@@ -55,52 +52,81 @@ class ChatViewModel {
         Task {
             do {
                 guard !openAIKey.isEmpty else {
-                    errorMessage = "Please set your OpenAI API Key in Settings."
+                    errorMessage = "Por favor, configure sua chave da OpenAI nas Configurações."
                     isProcessing = false
                     return
                 }
                 
+                // 1. Transcribe only
                 let transcript = try await openAIClient.transcribeAudio(fileURL: url, apiKey: openAIKey)
                 
-                // Add user message
-                let userMessage = Message(role: .user, content: transcript)
-                messages.append(userMessage)
-                
-                // Get AI response
-                let response = try await openAIClient.sendMessage(messages: messages, apiKey: openAIKey)
-                let aiMessage = Message(role: .assistant, content: response)
-                messages.append(aiMessage)
+                await MainActor.run {
+                    self.transcribedText = transcript
+                    self.showTools = true // Mostra as ferramentas após transcrever
+                }
                 
             } catch {
-                errorMessage = "Error: \(error.localizedDescription)"
+                errorMessage = "Erro na transcrição: \(error.localizedDescription)"
             }
             
             isProcessing = false
         }
     }
     
-    func sendMessage(_ text: String) {
-        let userMessage = Message(role: .user, content: text)
-        messages.append(userMessage)
+    // MARK: - AI Actions
+    
+    func performAction(_ action: AIAction) {
+        guard !transcribedText.isEmpty else { return }
+        guard !openAIKey.isEmpty else {
+            errorMessage = "Configure sua chave da OpenAI."
+            return
+        }
         
         isProcessing = true
         
         Task {
             do {
-                guard !openAIKey.isEmpty else {
-                    errorMessage = "Please set your OpenAI API Key in Settings."
-                    isProcessing = false
-                    return
-                }
+                let prompt = action.prompt(for: transcribedText)
                 
-                let response = try await openAIClient.sendMessage(messages: messages, apiKey: openAIKey)
-                let aiMessage = Message(role: .assistant, content: response)
-                messages.append(aiMessage)
+                // Adiciona contexto do sistema para garantir PT-BR
+                let systemMessage = Message(role: .system, content: "Você é um assistente pessoal eficiente. Responda sempre em Português do Brasil.")
+                let userMessage = Message(role: .user, content: prompt)
+                
+                let response = try await openAIClient.sendMessage(messages: [systemMessage, userMessage], apiKey: openAIKey)
+                
+                await MainActor.run {
+                    // Aqui decidimos o que fazer com a resposta. 
+                    // Por enquanto, vamos substituir o texto ou adicionar abaixo?
+                    // O usuário pediu "ferramentas", então vamos mostrar o resultado.
+                    // Para simplificar o fluxo "Transcription First", vamos atualizar o texto principal com o resultado
+                    // ou poderíamos ter um campo de "Resultado". Vamos atualizar o texto principal para edição.
+                    self.transcribedText = response
+                }
             } catch {
-                errorMessage = "Error: \(error.localizedDescription)"
+                errorMessage = "Erro na ação: \(error.localizedDescription)"
             }
             
             isProcessing = false
+        }
+    }
+}
+
+enum AIAction {
+    case summarize
+    case improve
+    case generatePrompt
+    case createTask
+    
+    func prompt(for text: String) -> String {
+        switch self {
+        case .summarize:
+            return "Resuma o seguinte texto em tópicos concisos:\n\n\(text)"
+        case .improve:
+            return "Reescreva o seguinte texto para torná-lo mais profissional, claro e corrigir erros gramaticais:\n\n\(text)"
+        case .generatePrompt:
+            return "Com base no texto abaixo, crie um prompt estruturado e detalhado para uma IA generativa:\n\n\(text)"
+        case .createTask:
+            return "Extraia as tarefas acionáveis do seguinte texto e formate-as como uma lista de verificação (checklist):\n\n\(text)"
         }
     }
 }
