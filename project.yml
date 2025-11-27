@@ -1,0 +1,18 @@
+name: PocketMind
+options:
+  bundleIdPrefix: com.pocketmind
+  deploymentTarget:
+    iOS: 17.0
+  xcodeVersion: 15.0
+targets:
+  PocketMind:
+    type: application
+    platform: iOS
+    sources:
+      - path: PocketMind
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.pocketmind.app
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "We need access to your microphone to record audio for transcription."
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "We need speech recognition to process your voice commands."
+        INFOPLIST_KEY_UILaunchScreen: {}
