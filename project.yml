@@ -15,4 +15,4 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.pocketmind.app
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "We need access to your microphone to record audio for transcription."
         INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "We need speech recognition to process your voice commands."
-        INFOPLIST_KEY_UILaunchScreen: {}
+        INFOPLIST_KEY_UILaunchScreen: "LaunchScreen"
