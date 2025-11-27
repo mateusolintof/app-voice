@@ -62,8 +62,43 @@ Para rodar este projeto, você precisará de:
 4. **Configure as Assinaturas (Signing)**
    No Xcode, vá em `PocketMind` (Target) -> `Signing & Capabilities` e selecione seu Time de Desenvolvimento.
 
-5. **Execute**
+6. **Execute**
    Selecione um simulador (recomendado: iPhone 15 Pro) ou seu dispositivo físico e pressione `Cmd + R`.
+
+## 📱 Testando no iPhone Físico (iOS 16+)
+
+Para rodar o app no seu iPhone (ex: iPhone 13 Pro com iOS 18), siga estes passos extras de segurança da Apple:
+
+1. **Ative o Modo Desenvolvedor**:
+   - No iPhone, vá em **Ajustes** > **Privacidade e Segurança**.
+   - Role até o fim e ative **Modo Desenvolvedor**.
+   - Reinicie o iPhone quando solicitado.
+
+2. **Confie no Desenvolvedor**:
+   - Ao tentar abrir o app pela primeira vez, você verá um erro de "Desenvolvedor Não Confiável".
+   - Vá em **Ajustes** > **Geral** > **VPN e Gerenciamento de Dispositivo**.
+   - Toque no seu e-mail de desenvolvedor e selecione **Confiar**.
+
+## 🍎 Publicando na App Store
+
+Para levar seu app ao público, o processo envolve:
+
+1. **Apple Developer Program**:
+   - É necessário se inscrever no programa (custo anual de ~$99 USD).
+   - Site: [developer.apple.com/enroll](https://developer.apple.com/enroll/)
+
+2. **App Store Connect**:
+   - Crie a ficha do app (Nome, Descrição, Screenshots, Política de Privacidade).
+
+3. **Gerar Versão Final (Archive)**:
+   - No Xcode, selecione o destino **Any iOS Device (arm64)**.
+   - Vá no menu **Product** > **Archive**.
+   - Após a compilação, clique em **Distribute App** > **App Store Connect** > **Upload**.
+
+4. **TestFlight & Review**:
+   - Use o TestFlight para testes beta com usuários externos.
+   - Envie para revisão da Apple (leva de 24h a 48h).
+
 
 ## ⚙️ Configuração Inicial
 
