@@ -1,10 +1,15 @@
 import Foundation
 import AVFoundation
 
-class AudioRecorder: NSObject, ObservableObject {
+import Foundation
+import AVFoundation
+import Observation
+
+@Observable
+class AudioRecorder: NSObject {
     var audioRecorder: AVAudioRecorder?
-    @Published var isRecording = false
-    @Published var recordingURL: URL?
+    var isRecording = false
+    var recordingURL: URL?
     
     override init() {
         super.init()

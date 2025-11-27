@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ChatView: View {
-    @StateObject private var viewModel = ChatViewModel()
+    @State private var viewModel = ChatViewModel()
     @State private var inputText = ""
     
     var body: some View {
