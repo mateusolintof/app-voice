@@ -78,37 +78,41 @@ class ChatViewModel {
     // MARK: - AI Actions
     
     func performAction(_ action: AIAction) {
-        guard !transcribedText.isEmpty else { return }
+        Task {
+            let result = await performActionReturningResult(action)
+            await MainActor.run {
+                self.transcribedText = result
+            }
+        }
+    }
+    
+    func performActionReturningResult(_ action: AIAction) async -> String {
+        guard !transcribedText.isEmpty else { return "" }
         guard !openAIKey.isEmpty else {
-            errorMessage = "Configure sua chave da OpenAI."
-            return
+            await MainActor.run { errorMessage = "Configure sua chave da OpenAI." }
+            return ""
         }
         
-        isProcessing = true
+        await MainActor.run { isProcessing = true }
         
-        Task {
-            do {
-                let prompt = action.prompt(for: transcribedText)
-                
-                // Adiciona contexto do sistema para garantir PT-BR
-                let systemMessage = Message(role: .system, content: "Você é um assistente pessoal eficiente. Responda sempre em Português do Brasil.")
-                let userMessage = Message(role: .user, content: prompt)
-                
-                let response = try await openAIClient.sendMessage(messages: [systemMessage, userMessage], apiKey: openAIKey)
-                
-                await MainActor.run {
-                    // Aqui decidimos o que fazer com a resposta. 
-                    // Por enquanto, vamos substituir o texto ou adicionar abaixo?
-                    // O usuário pediu "ferramentas", então vamos mostrar o resultado.
-                    // Para simplificar o fluxo "Transcription First", vamos atualizar o texto principal com o resultado
-                    // ou poderíamos ter um campo de "Resultado". Vamos atualizar o texto principal para edição.
-                    self.transcribedText = response
-                }
-            } catch {
-                errorMessage = "Erro na ação: \(error.localizedDescription)"
-            }
+        do {
+            let prompt = action.prompt(for: transcribedText)
             
-            isProcessing = false
+            // Adiciona contexto do sistema para garantir PT-BR
+            let systemMessage = Message(role: .system, content: "Você é um assistente pessoal eficiente. Responda sempre em Português do Brasil.")
+            let userMessage = Message(role: .user, content: prompt)
+            
+            let response = try await openAIClient.sendMessage(messages: [systemMessage, userMessage], apiKey: openAIKey)
+            
+            await MainActor.run { isProcessing = false }
+            return response
+            
+        } catch {
+            await MainActor.run {
+                errorMessage = "Erro na ação: \(error.localizedDescription)"
+                isProcessing = false
+            }
+            return ""
         }
     }
 }

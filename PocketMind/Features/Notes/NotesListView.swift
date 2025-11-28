@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct NotesListView: View {
+    @Binding var showMenu: Bool
     @State private var notes: [Note] = []
     @State private var searchText = ""
     
@@ -42,6 +43,16 @@ struct NotesListView: View {
                 }
             }
             .navigationTitle("Minhas Notas")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: { withAnimation { showMenu.toggle() } }) {
+                        Image(systemName: "line.3.horizontal")
+                            .font(.title3)
+                            .foregroundStyle(.primary)
+                    }
+                }
+            }
             .searchable(text: $searchText, prompt: "Buscar notas...")
             .onAppear {
                 notes = NoteManager.shared.notes

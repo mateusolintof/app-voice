@@ -12,20 +12,7 @@ struct MainView: View {
                 case 0:
                     RecordingView(showMenu: $showMenu)
                 case 1:
-                    NotesListView()
-                        .overlay(alignment: .topLeading) {
-                            // Menu Button for Notes View (since it has its own NavStack)
-                            Button(action: { withAnimation { showMenu.toggle() } }) {
-                                Image(systemName: "line.3.horizontal")
-                                    .font(.title3)
-                                    .foregroundStyle(.primary)
-                                    .padding()
-                                    .background(.ultraThinMaterial)
-                                    .clipShape(Circle())
-                                    .padding(.leading, 16)
-                                    .padding(.top, 48) // Adjust for safe area
-                            }
-                        }
+                    NotesListView(showMenu: $showMenu)
                 case 2:
                     SettingsView()
                         .overlay(alignment: .topLeading) {

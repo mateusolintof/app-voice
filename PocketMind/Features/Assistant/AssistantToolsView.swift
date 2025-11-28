@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AssistantToolsView: View {
     let viewModel: ChatViewModel
+    var onActionComplete: ((String) -> Void)? = nil // Callback for when an action finishes
     @Environment(\.dismiss) var dismiss
     
     let columns = [
@@ -14,23 +15,35 @@ struct AssistantToolsView: View {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 16) {
                     ToolCard(icon: "doc.text", title: "Resumir", color: .blue) {
-                        viewModel.performAction(.summarize)
-                        dismiss()
+                        Task {
+                            let result = await viewModel.performActionReturningResult(.summarize)
+                            onActionComplete?(result)
+                            dismiss()
+                        }
                     }
                     
                     ToolCard(icon: "wand.and.stars", title: "Melhorar", color: .purple) {
-                        viewModel.performAction(.improve)
-                        dismiss()
+                        Task {
+                            let result = await viewModel.performActionReturningResult(.improve)
+                            onActionComplete?(result)
+                            dismiss()
+                        }
                     }
                     
                     ToolCard(icon: "brain.head.profile", title: "Gerar Prompt", color: .orange) {
-                        viewModel.performAction(.generatePrompt)
-                        dismiss()
+                        Task {
+                            let result = await viewModel.performActionReturningResult(.generatePrompt)
+                            onActionComplete?(result)
+                            dismiss()
+                        }
                     }
                     
                     ToolCard(icon: "checklist", title: "Criar Tarefa", color: .green) {
-                        viewModel.performAction(.createTask)
-                        dismiss()
+                        Task {
+                            let result = await viewModel.performActionReturningResult(.createTask)
+                            onActionComplete?(result)
+                            dismiss()
+                        }
                     }
                 }
                 .padding()
