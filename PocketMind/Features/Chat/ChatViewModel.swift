@@ -7,8 +7,6 @@ import Observation
 
 @MainActor
 @Observable
-@MainActor
-@Observable
 class ChatViewModel {
     // State
     var transcribedText: String = ""
