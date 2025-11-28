@@ -61,6 +61,10 @@ class ChatViewModel {
                 await MainActor.run {
                     self.transcribedText = transcript
                     self.showTools = true // Mostra as ferramentas após transcrever
+                    
+                    // Auto-save Note
+                    let title = "Nota \(Date().formatted(date: .numeric, time: .shortened))"
+                    NoteManager.shared.addNote(title: title, content: transcript, audioURL: url)
                 }
                 
             } catch {
