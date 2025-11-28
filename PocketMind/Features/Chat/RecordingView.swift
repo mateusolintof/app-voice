@@ -85,6 +85,7 @@ struct RecordingView: View {
                         .padding(.bottom, 20)
                     }
                     .padding(.top, 20)
+                    .frame(maxWidth: .infinity)
                     .background(.ultraThinMaterial)
                 }
             }
