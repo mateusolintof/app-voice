@@ -25,7 +25,10 @@ struct CommitmentRow: View {
 
                     HStack(spacing: 8) {
                         Label("\(commitment.durationMinutes) min", systemImage: "clock")
-                        Label(commitment.dueAt, format: .dateTime.hour().minute())
+                        HStack(spacing: 2) {
+                            Image(systemName: "calendar")
+                            Text(commitment.dueAt, format: .dateTime.hour().minute())
+                        }
                     }
                     .font(.caption2)
                     .foregroundStyle(PMDesign.textTertiary)
