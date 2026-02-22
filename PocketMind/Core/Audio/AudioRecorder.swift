@@ -1,22 +1,20 @@
 import Foundation
 import AVFoundation
-
-import Foundation
-import AVFoundation
 import Observation
 
 @Observable
-class AudioRecorder: NSObject {
+final class AudioRecorder: NSObject {
     var audioRecorder: AVAudioRecorder?
     var isRecording = false
     var recordingURL: URL?
-    
+
     override init() {
         super.init()
-        setupAudioSession()
+        setupAudioSessionIfNeeded()
     }
-    
-    func setupAudioSession() {
+
+    private func setupAudioSessionIfNeeded() {
+        #if os(iOS)
         let session = AVAudioSession.sharedInstance()
         do {
             try session.setCategory(.playAndRecord, mode: .default)
@@ -24,18 +22,20 @@ class AudioRecorder: NSObject {
         } catch {
             print("Failed to set up audio session: \(error)")
         }
+        #endif
     }
-    
+
     func startRecording() {
-        let fileName = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".m4a")
-        
+        let fileName = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".m4a")
+
         let settings: [String: Any] = [
             AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
             AVSampleRateKey: 12000,
             AVNumberOfChannelsKey: 1,
             AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
         ]
-        
+
         do {
             audioRecorder = try AVAudioRecorder(url: fileName, settings: settings)
             audioRecorder?.delegate = self
@@ -46,7 +46,7 @@ class AudioRecorder: NSObject {
             print("Could not start recording: \(error)")
         }
     }
-    
+
     func stopRecording() {
         audioRecorder?.stop()
         isRecording = false
