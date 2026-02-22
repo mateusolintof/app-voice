@@ -11,6 +11,8 @@ targets:
     platform: iOS
     sources:
       - path: PocketMind
+        includes:
+          - "**/*.swift"
         excludes:
           - Features/Assistant/**
           - Features/Chat/**
@@ -31,6 +33,8 @@ targets:
     platform: macOS
     sources:
       - path: PocketMind
+        includes:
+          - "**/*.swift"
         excludes:
           - Features/Assistant/**
           - Features/Chat/**
