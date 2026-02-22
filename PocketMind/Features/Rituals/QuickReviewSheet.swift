@@ -10,7 +10,7 @@ struct QuickReviewSheet: View {
     @State private var lesson = ""
     @State private var adjustment = ""
     @State private var consistencyScore: Double = 3
-    @State private var saved = false
+    @State private var ringProgress: CGFloat = 0
 
     let completionRate: Double
 
@@ -21,24 +21,29 @@ struct QuickReviewSheet: View {
                     // Completion circle
                     ZStack {
                         Circle()
-                            .stroke(PMDesign.textTertiary.opacity(0.2), lineWidth: 8)
+                            .stroke(PMDesign.textTertiary.opacity(0.15), lineWidth: 10)
 
                         Circle()
-                            .trim(from: 0, to: completionRate)
-                            .stroke(PMDesign.brandGradient, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                            .trim(from: 0, to: ringProgress)
+                            .stroke(PMDesign.brandGradient, style: StrokeStyle(lineWidth: 10, lineCap: .round))
                             .rotationEffect(.degrees(-90))
-                            .animation(.easeOut(duration: 0.8), value: completionRate)
 
                         VStack(spacing: 2) {
-                            Text("\(Int(completionRate * 100))%")
-                                .font(.title2.weight(.bold))
+                            Text("\(Int(ringProgress * 100))%")
+                                .font(PMDesign.title2)
                                 .foregroundStyle(PMDesign.textPrimary)
+                                .contentTransition(.numericText())
                             Text("concluido")
-                                .font(.caption2)
+                                .font(PMDesign.caption2Rounded)
                                 .foregroundStyle(PMDesign.textTertiary)
                         }
                     }
-                    .frame(width: 120, height: 120)
+                    .frame(width: 130, height: 130)
+                    .onAppear {
+                        withAnimation(PMDesign.springGentle.delay(0.3)) {
+                            ringProgress = completionRate
+                        }
+                    }
 
                     // Input fields
                     VStack(alignment: .leading, spacing: PMDesign.spacingM) {
@@ -61,7 +66,7 @@ struct QuickReviewSheet: View {
                         inputField(
                             title: "Licao do dia",
                             icon: "lightbulb.fill",
-                            color: PMDesign.accent,
+                            color: PMDesign.brandPrimary,
                             placeholder: "O que voce aprendeu hoje?",
                             text: $lesson
                         )
@@ -69,7 +74,7 @@ struct QuickReviewSheet: View {
                         inputField(
                             title: "Ajuste para amanha",
                             icon: "arrow.forward.circle.fill",
-                            color: PMDesign.accentSecondary,
+                            color: PMDesign.brandTertiary,
                             placeholder: "O que mudar amanha?",
                             text: $adjustment
                         )
@@ -78,16 +83,16 @@ struct QuickReviewSheet: View {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 Label("Consistencia", systemImage: "chart.bar.fill")
-                                    .font(.caption.weight(.semibold))
+                                    .font(PMDesign.captionRounded)
                                     .foregroundStyle(PMDesign.textSecondary)
                                 Spacer()
                                 Text("\(Int(consistencyScore))/5")
                                     .font(.caption.weight(.bold))
-                                    .foregroundStyle(PMDesign.accent)
+                                    .foregroundStyle(PMDesign.brandPrimary)
                             }
 
                             Slider(value: $consistencyScore, in: 1...5, step: 1)
-                                .tint(PMDesign.accent)
+                                .tint(PMDesign.brandPrimary)
                         }
                     }
 
@@ -119,7 +124,7 @@ struct QuickReviewSheet: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Label(title, systemImage: icon)
-                .font(.caption.weight(.semibold))
+                .font(PMDesign.captionRounded)
                 .foregroundStyle(color)
 
             TextField(placeholder, text: text, axis: .vertical)
@@ -131,6 +136,9 @@ struct QuickReviewSheet: View {
     }
 
     private func saveReview() {
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(.success)
+
         let wins = winsInput.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
         let frictions = frictionsInput.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
 

@@ -35,14 +35,22 @@ final class VoiceRecordingViewModel {
     }
 
     func startRecording() {
-        audioRecorder.startRecording()
-        state = .recording
-        recordingDuration = 0
-        errorMessage = nil
+        Task {
+            let permission = await audioRecorder.checkMicrophonePermission()
+            guard permission == .granted else {
+                errorMessage = "Permissao de microfone negada. Ative em Ajustes > Privacidade > Microfone."
+                return
+            }
 
-        durationTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.recordingDuration += 1
+            audioRecorder.startRecording()
+            state = .recording
+            recordingDuration = 0
+            errorMessage = nil
+
+            durationTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+                Task { @MainActor in
+                    self?.recordingDuration += 1
+                }
             }
         }
     }
@@ -53,6 +61,18 @@ final class VoiceRecordingViewModel {
         durationTimer = nil
         state = .transcribing
         transcribe()
+    }
+
+    func reRecord() {
+        audioRecorder.stopRecording()
+        durationTimer?.invalidate()
+        durationTimer = nil
+        transcribedText = ""
+        aiResponse = ""
+        lastTurn = nil
+        errorMessage = nil
+        recordingDuration = 0
+        state = .idle
     }
 
     func sendToCoach(modelContext: ModelContext) async {
@@ -115,6 +135,8 @@ final class VoiceRecordingViewModel {
     }
 
     func reset() {
+        durationTimer?.invalidate()
+        durationTimer = nil
         state = .idle
         transcribedText = ""
         aiResponse = ""

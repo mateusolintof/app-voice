@@ -8,7 +8,6 @@ final class RitualsViewModel {
     var selectedSlot: RitualSlot = .morning
     var transcribedText: String = ""
     var currentMission: String = ""
-    var frictionNote: String = ""
 
     var isRecording = false
     var isProcessing = false
@@ -43,9 +42,16 @@ final class RitualsViewModel {
             isRecording = false
             processRecording()
         } else {
-            audioRecorder.startRecording()
-            isRecording = true
-            errorMessage = nil
+            Task {
+                let permission = await audioRecorder.checkMicrophonePermission()
+                guard permission == .granted else {
+                    errorMessage = "Permissao de microfone negada. Ative em Ajustes > Privacidade > Microfone."
+                    return
+                }
+                audioRecorder.startRecording()
+                isRecording = true
+                errorMessage = nil
+            }
         }
     }
 
@@ -221,7 +227,7 @@ final class RitualsViewModel {
             .map(\.contract)
             .filter { $0.status != .completed }
 
-        let frictions = frictionNote.isEmpty ? [] : [frictionNote]
+        let frictions = fetchRecentFrictions(modelContext: modelContext)
 
         return TherapyContext(
             profile: profile,
@@ -230,5 +236,21 @@ final class RitualsViewModel {
             pendingCommitments: pending,
             recentFrictionNotes: frictions
         )
+    }
+
+    private func fetchRecentFrictions(modelContext: ModelContext) -> [String] {
+        let calendar = Calendar.current
+        let sevenDaysAgo = calendar.date(byAdding: .day, value: -7, to: calendar.startOfDay(for: Date())) ?? Date()
+
+        let descriptor = FetchDescriptor<DailyReviewEntity>(
+            predicate: #Predicate { $0.date >= sevenDaysAgo },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+
+        guard let reviews = try? modelContext.fetch(descriptor) else { return [] }
+
+        return reviews
+            .flatMap { $0.frictionsRaw.split(separator: "|").map(String.init) }
+            .filter { !$0.isEmpty }
     }
 }

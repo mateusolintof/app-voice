@@ -2,6 +2,7 @@ import SwiftUI
 
 struct JournalEntryDetailView: View {
     let entry: JournalEntryEntity
+    @State private var appeared = false
 
     var body: some View {
         ScrollView {
@@ -21,8 +22,8 @@ struct JournalEntryDetailView: View {
                             .font(.caption.weight(.semibold))
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
-                            .background(PMDesign.accent.opacity(0.15))
-                            .foregroundStyle(PMDesign.accent)
+                            .background(PMDesign.brandGradient.opacity(0.2))
+                            .foregroundStyle(PMDesign.brandPrimary)
                             .clipShape(Capsule())
                     }
                 }
@@ -30,7 +31,7 @@ struct JournalEntryDetailView: View {
                 // User bubble
                 VStack(alignment: .leading, spacing: 6) {
                     Label("Voce", systemImage: "person.fill")
-                        .font(.caption.weight(.semibold))
+                        .font(PMDesign.captionRounded)
                         .foregroundStyle(PMDesign.textSecondary)
 
                     Text(entry.transcribedText)
@@ -40,64 +41,64 @@ struct JournalEntryDetailView: View {
                         .background(.ultraThinMaterial)
                         .clipShape(RoundedRectangle(cornerRadius: PMDesign.cornerMedium, style: .continuous))
                 }
+                .opacity(appeared ? 1 : 0)
+                .offset(y: appeared ? 0 : 10)
 
                 // AI coach bubble
                 if let aiResponse = entry.aiResponse, !aiResponse.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
                         Label("Coach", systemImage: "brain.head.profile.fill")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(PMDesign.accent)
+                            .font(PMDesign.captionRounded)
+                            .foregroundStyle(PMDesign.brandPrimary)
 
                         Text(aiResponse)
                             .font(.body)
                             .padding(PMDesign.spacingM)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(PMDesign.accent.opacity(0.08))
+                            .background(PMDesign.brandPrimary.opacity(0.08))
                             .clipShape(RoundedRectangle(cornerRadius: PMDesign.cornerMedium, style: .continuous))
                     }
+                    .opacity(appeared ? 1 : 0)
+                    .offset(y: appeared ? 0 : 10)
                 }
 
-                // Cognitive diagnosis
+                // Raw Reality
                 if let rawReality = entry.rawReality, !rawReality.isEmpty {
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Label("Realidade Crua", systemImage: "eye.fill")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(PMDesign.warning)
-                            Text(rawReality)
-                                .font(.subheadline)
-                                .foregroundStyle(PMDesign.textPrimary)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
+                    sectionCard(
+                        title: "Realidade Crua",
+                        icon: "eye.fill",
+                        color: PMDesign.accentAmber,
+                        text: rawReality,
+                        delay: 0.1
+                    )
                 }
 
+                // Reframing
                 if let reframing = entry.reframing, !reframing.isEmpty {
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Label("Reenquadramento", systemImage: "arrow.triangle.2.circlepath")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(PMDesign.success)
-                            Text(reframing)
-                                .font(.subheadline)
-                                .foregroundStyle(PMDesign.textPrimary)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
+                    sectionCard(
+                        title: "Reenquadramento",
+                        icon: "arrow.triangle.2.circlepath",
+                        color: PMDesign.success,
+                        text: reframing,
+                        delay: 0.2
+                    )
                 }
 
+                // Meaning Anchor
                 if let meaning = entry.meaningAnchor, !meaning.isEmpty {
-                    GlassCard {
+                    GlassCard(glowColor: PMDesign.accentGold, glowOpacity: 0.3) {
                         VStack(alignment: .leading, spacing: 12) {
                             Label("Ancora de Sentido", systemImage: "anchor.fill")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(PMDesign.accent)
+                                .font(PMDesign.captionRounded)
+                                .foregroundStyle(PMDesign.accentGold)
                             Text(meaning)
                                 .font(.subheadline.weight(.medium))
-                                .foregroundStyle(PMDesign.accent)
+                                .foregroundStyle(PMDesign.brandPrimary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
+                    .opacity(appeared ? 1 : 0)
+                    .offset(y: appeared ? 0 : 10)
                 }
 
                 // Distortion tags
@@ -105,7 +106,7 @@ struct JournalEntryDetailView: View {
                     GlassCard {
                         VStack(alignment: .leading, spacing: 10) {
                             Label("Distorcoes Cognitivas", systemImage: "exclamationmark.triangle.fill")
-                                .font(.caption.weight(.semibold))
+                                .font(PMDesign.captionRounded)
                                 .foregroundStyle(PMDesign.warning)
 
                             FlowLayout(spacing: 6) {
@@ -122,6 +123,8 @@ struct JournalEntryDetailView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
+                    .opacity(appeared ? 1 : 0)
+                    .offset(y: appeared ? 0 : 10)
                 }
             }
             .padding(.horizontal, PMDesign.spacingM)
@@ -130,6 +133,28 @@ struct JournalEntryDetailView: View {
         .background(PMDesign.background)
         .navigationTitle("Entrada")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            withAnimation(PMDesign.springGentle.delay(0.15)) {
+                appeared = true
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func sectionCard(title: String, icon: String, color: Color, text: String, delay: Double) -> some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 12) {
+                Label(title, systemImage: icon)
+                    .font(PMDesign.captionRounded)
+                    .foregroundStyle(color)
+                Text(text)
+                    .font(.subheadline)
+                    .foregroundStyle(PMDesign.textPrimary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .opacity(appeared ? 1 : 0)
+        .offset(y: appeared ? 0 : 10)
     }
 }
 

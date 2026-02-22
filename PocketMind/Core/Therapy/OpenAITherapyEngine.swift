@@ -1,17 +1,31 @@
 import Foundation
 
-enum TherapyEngineError: Error {
+enum TherapyEngineError: Error, LocalizedError {
     case missingAPIKey
     case invalidResponse
+    case decodingFailed(String)
+    case networkError(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .missingAPIKey:
+            return "Chave OpenAI nao configurada. Va em Perfil para adicionar sua chave."
+        case .invalidResponse:
+            return "Resposta invalida do servidor. Tente novamente."
+        case .decodingFailed(let detail):
+            return "Falha ao processar resposta da IA: \(detail)"
+        case .networkError(let detail):
+            return "Erro de rede: \(detail)"
+        }
+    }
 }
 
 struct OpenAITherapyEngine: TherapyEngine {
     private let client = OpenAIClient()
     private let decoder = JSONDecoder()
-    private let encoder = JSONEncoder()
 
     func runTurn(input: String, context: TherapyContext) async throws -> TherapyTurnEnvelope {
-        if let critical = criticalResponseIfNeeded(input: input) {
+        if let critical = checkCriticalInput(input: input) {
             return critical
         }
 
@@ -28,7 +42,12 @@ struct OpenAITherapyEngine: TherapyEngine {
             Message(role: .user, content: userPrompt)
         ]
 
-        let raw = try await client.sendStructuredMessage(messages: messages, apiKey: apiKey, model: "gpt-4o")
+        let raw: String
+        do {
+            raw = try await client.sendStructuredMessage(messages: messages, apiKey: apiKey, model: "gpt-4o")
+        } catch {
+            throw TherapyEngineError.networkError(error.localizedDescription)
+        }
 
         guard let data = raw.data(using: .utf8) else {
             throw TherapyEngineError.invalidResponse
@@ -37,7 +56,7 @@ struct OpenAITherapyEngine: TherapyEngine {
         do {
             return try decoder.decode(TherapyTurnEnvelope.self, from: data)
         } catch {
-            return fallbackEnvelope(from: input, context: context)
+            throw TherapyEngineError.decodingFailed(error.localizedDescription)
         }
     }
 
@@ -46,11 +65,11 @@ struct OpenAITherapyEngine: TherapyEngine {
 
         switch slot {
         case .morning:
-            slotPrompt = "Ritual da manhã: defina missão, obstáculo principal e compromisso executável." 
+            slotPrompt = "Ritual da manhã: defina missão, obstáculo principal e compromisso executável."
         case .midday:
-            slotPrompt = "Ritual do meio do dia: confrontar autoengano, recalibrar e escolher próximo passo curto." 
+            slotPrompt = "Ritual do meio do dia: confrontar autoengano, recalibrar e escolher próximo passo curto."
         case .evening:
-            slotPrompt = "Ritual da noite: revisão objetiva, aprendizado e ajuste para amanhã." 
+            slotPrompt = "Ritual da noite: revisão objetiva, aprendizado e ajuste para amanhã."
         }
 
         let envelope = try await runTurn(input: slotPrompt, context: context)
@@ -75,6 +94,8 @@ struct OpenAITherapyEngine: TherapyEngine {
             contract: envelope.contract
         )
     }
+
+    // MARK: - System Prompt
 
     private func buildSystemPrompt(profile: TherapyProfile) -> String {
         let styleIntensity = max(1, min(5, profile.confrontationLevel))
@@ -145,34 +166,9 @@ struct OpenAITherapyEngine: TherapyEngine {
         """
     }
 
-    private func fallbackEnvelope(from input: String, context: TherapyContext) -> TherapyTurnEnvelope {
-        let dueAt = Date().addingTimeInterval(15 * 60)
+    // MARK: - Critical Safety Check
 
-        return TherapyTurnEnvelope(
-            rawReality: "Você está carregando informações demais sem transformar em execução objetiva.",
-            diagnosis: CognitiveDiagnosis(
-                distortionTags: ["sobrecarga", "ambiguidade"],
-                controlSplit: ControlSplit(
-                    underControl: ["Definir o próximo passo", "Executar 15 minutos"],
-                    notUnderControl: ["Resultado final imediato"]
-                ),
-                avoidanceScore: 0.42
-            ),
-            reframing: "Sem execução curta, não existe clareza. Clareza vem da ação, não da ruminação.",
-            meaningAnchor: context.currentMission.isEmpty ? "Seu propósito hoje é recuperar agência sobre o próprio dia." : context.currentMission,
-            contract: CommitmentContract(
-                statement: "Vou executar um bloco curto agora, sem negociar comigo mesmo.",
-                nextAction: "Escolher a tarefa mais crítica e trabalhar 15 minutos sem distração.",
-                durationMinutes: 15,
-                dueAt: dueAt,
-                accountabilityPrompt: "Você começou esse bloco agora?",
-                status: .planned
-            ),
-            followupQuestion: "Qual evidência concreta você terá em 15 minutos de que avançou?"
-        )
-    }
-
-    private func criticalResponseIfNeeded(input: String) -> TherapyTurnEnvelope? {
+    private func checkCriticalInput(input: String) -> TherapyTurnEnvelope? {
         let criticalTerms = [
             "suicidio", "suicídio", "me matar", "tirar minha vida", "não quero viver",
             "auto mutilação", "automutilação", "self harm"

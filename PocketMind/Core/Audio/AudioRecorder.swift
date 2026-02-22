@@ -2,15 +2,22 @@ import Foundation
 import AVFoundation
 import Observation
 
+enum MicrophonePermission {
+    case unknown
+    case granted
+    case denied
+}
+
 @Observable
 final class AudioRecorder: NSObject {
     var audioRecorder: AVAudioRecorder?
     var isRecording = false
     var recordingURL: URL?
-    var audioLevels: [CGFloat] = Array(repeating: 0, count: 40)
+    var audioLevels: [CGFloat] = Array(repeating: 0, count: 48)
+    var micPermission: MicrophonePermission = .unknown
 
     private var meteringTimer: Timer?
-    private let barCount = 40
+    private let barCount = 48
 
     override init() {
         super.init()
@@ -28,6 +35,33 @@ final class AudioRecorder: NSObject {
         }
         #endif
     }
+
+    // MARK: - Microphone Permission
+
+    func checkMicrophonePermission() async -> MicrophonePermission {
+        #if os(iOS)
+        switch AVAudioApplication.shared.recordPermission {
+        case .granted:
+            micPermission = .granted
+            return .granted
+        case .denied:
+            micPermission = .denied
+            return .denied
+        case .undetermined:
+            let granted = await AVAudioApplication.requestRecordPermission()
+            micPermission = granted ? .granted : .denied
+            return micPermission
+        @unknown default:
+            micPermission = .denied
+            return .denied
+        }
+        #else
+        micPermission = .granted
+        return .granted
+        #endif
+    }
+
+    // MARK: - Recording
 
     func startRecording() {
         let fileName = FileManager.default.temporaryDirectory

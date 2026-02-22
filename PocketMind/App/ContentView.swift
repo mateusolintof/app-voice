@@ -1,23 +1,41 @@
 import SwiftUI
 
 struct ContentView: View {
+    @State private var selectedTab = 0
+
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
+            TodayView()
+                .tabItem {
+                    Label("Hoje", systemImage: "sun.max.fill")
+                }
+                .tag(0)
+
             JournalView()
                 .tabItem {
                     Label("Diario", systemImage: "book.fill")
                 }
+                .tag(1)
 
             RitualsView()
                 .tabItem {
                     Label("Rituais", systemImage: "sparkles")
                 }
+                .tag(2)
 
             ProfileView()
                 .tabItem {
                     Label("Perfil", systemImage: "person.fill")
                 }
+                .tag(3)
         }
-        .tint(.indigo)
+        .tint(PMDesign.brandPrimary)
+        .onReceive(NotificationCenter.default.publisher(for: .switchToTab)) { notification in
+            if let tab = notification.object as? Int {
+                withAnimation(PMDesign.springSnappy) {
+                    selectedTab = tab
+                }
+            }
+        }
     }
 }

@@ -14,11 +14,13 @@ struct RitualActionCard: View {
     let onRunRitual: () -> Void
     let onRunRecovery: () -> Void
 
+    @State private var showResults = false
+
     var body: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: PMDesign.spacingM) {
                 Label("Entrada de Voz", systemImage: "waveform.and.mic")
-                    .font(.subheadline.weight(.semibold))
+                    .font(PMDesign.headlineRounded)
                     .foregroundStyle(PMDesign.textPrimary)
 
                 TextEditor(text: $inputText)
@@ -41,78 +43,78 @@ struct RitualActionCard: View {
                         alignment: .topLeading
                     )
 
-                // Action buttons
+                // Primary action: Ritual (full-width gradient)
+                GlassButton(
+                    title: "Ritual",
+                    icon: "sun.horizon.fill",
+                    style: .primary,
+                    isLoading: isProcessing
+                ) {
+                    onRunRitual()
+                }
+
+                // Secondary actions: half-width
                 HStack(spacing: 10) {
                     Button {
+                        let generator = UIImpactFeedbackGenerator(style: .medium)
+                        generator.impactOccurred()
                         onToggleRecording()
                     } label: {
                         Label(isRecording ? "Parar" : "Gravar", systemImage: isRecording ? "stop.fill" : "mic.fill")
                             .font(.caption.weight(.semibold))
                             .padding(.vertical, 10)
-                            .padding(.horizontal, 12)
+                            .frame(maxWidth: .infinity)
                             .foregroundStyle(.white)
-                            .background(isRecording ? PMDesign.danger : PMDesign.accent)
+                            .background(isRecording ? PMDesign.danger : PMDesign.brandPrimary)
                             .clipShape(RoundedRectangle(cornerRadius: PMDesign.cornerSmall, style: .continuous))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressScaleButtonStyle())
 
                     Button {
+                        let generator = UIImpactFeedbackGenerator(style: .medium)
+                        generator.impactOccurred()
                         onRunDiagnosis()
                     } label: {
                         Label("Diagnostico", systemImage: "brain.head.profile")
                             .font(.caption.weight(.semibold))
                             .padding(.vertical, 10)
-                            .padding(.horizontal, 12)
-                            .foregroundStyle(.white)
-                            .background(PMDesign.accent.opacity(0.8))
+                            .frame(maxWidth: .infinity)
+                            .foregroundStyle(PMDesign.brandPrimary)
+                            .background(.ultraThinMaterial)
                             .clipShape(RoundedRectangle(cornerRadius: PMDesign.cornerSmall, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: PMDesign.cornerSmall, style: .continuous)
+                                    .stroke(PMDesign.glassBorderGradient(opacity: 0.3), lineWidth: 1)
+                            )
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressScaleButtonStyle())
                     .disabled(isProcessing)
                 }
 
-                HStack(spacing: 10) {
-                    Button {
-                        onRunRitual()
-                    } label: {
-                        Label("Ritual", systemImage: "sun.horizon.fill")
-                            .font(.caption.weight(.semibold))
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, 12)
-                            .foregroundStyle(.white)
-                            .background(PMDesign.success)
-                            .clipShape(RoundedRectangle(cornerRadius: PMDesign.cornerSmall, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isProcessing)
-
-                    Button {
-                        onRunRecovery()
-                    } label: {
-                        Label("Recovery 90s", systemImage: "bolt.heart.fill")
-                            .font(.caption.weight(.semibold))
-                            .padding(.vertical, 10)
-                            .padding(.horizontal, 12)
-                            .foregroundStyle(.white)
-                            .background(PMDesign.warning)
-                            .clipShape(RoundedRectangle(cornerRadius: PMDesign.cornerSmall, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(isProcessing)
+                Button {
+                    let generator = UIImpactFeedbackGenerator(style: .medium)
+                    generator.impactOccurred()
+                    onRunRecovery()
+                } label: {
+                    Label("Recovery 90s", systemImage: "bolt.heart.fill")
+                        .font(.caption.weight(.semibold))
+                        .padding(.vertical, 10)
+                        .frame(maxWidth: .infinity)
+                        .foregroundStyle(PMDesign.brandPrimary)
+                        .background(.ultraThinMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: PMDesign.cornerSmall, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: PMDesign.cornerSmall, style: .continuous)
+                                .stroke(PMDesign.glassBorderGradient(opacity: 0.3), lineWidth: 1)
+                        )
                 }
-
-                if isProcessing {
-                    HStack {
-                        ProgressView()
-                        Text("Processando...")
-                            .font(.caption)
-                            .foregroundStyle(PMDesign.textSecondary)
-                    }
-                }
+                .buttonStyle(PressScaleButtonStyle())
+                .disabled(isProcessing)
 
                 // Results
                 if let turn = lastTurn {
                     resultSection(turn: turn)
+                        .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
             }
         }
@@ -121,11 +123,12 @@ struct RitualActionCard: View {
     @ViewBuilder
     private func resultSection(turn: TherapyTurnEnvelope) -> some View {
         Divider()
+            .padding(.vertical, 4)
 
         if !turn.reframing.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 Label("Reenquadramento", systemImage: "arrow.triangle.2.circlepath")
-                    .font(.caption.weight(.semibold))
+                    .font(PMDesign.captionRounded)
                     .foregroundStyle(PMDesign.success)
                 Text(turn.reframing)
                     .font(.subheadline)
@@ -135,18 +138,18 @@ struct RitualActionCard: View {
         if !turn.meaningAnchor.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 Label("Ancora de Sentido", systemImage: "anchor.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(PMDesign.accent)
+                    .font(PMDesign.captionRounded)
+                    .foregroundStyle(PMDesign.brandPrimary)
                 Text(turn.meaningAnchor)
                     .font(.subheadline.weight(.medium))
-                    .foregroundStyle(PMDesign.accent)
+                    .foregroundStyle(PMDesign.brandPrimary)
             }
         }
 
         if !turn.contract.statement.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 Label("Compromisso", systemImage: "checkmark.seal.fill")
-                    .font(.caption.weight(.semibold))
+                    .font(PMDesign.captionRounded)
                     .foregroundStyle(PMDesign.success)
                 Text(turn.contract.statement)
                     .font(.subheadline)
@@ -159,7 +162,7 @@ struct RitualActionCard: View {
         if !turn.followupQuestion.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 Label("Proxima Reflexao", systemImage: "questionmark.bubble.fill")
-                    .font(.caption.weight(.semibold))
+                    .font(PMDesign.captionRounded)
                     .foregroundStyle(PMDesign.textSecondary)
                 Text(turn.followupQuestion)
                     .font(.subheadline)

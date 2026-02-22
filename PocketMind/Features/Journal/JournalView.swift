@@ -9,16 +9,28 @@ struct JournalView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                if vm.filteredEntries.isEmpty {
+                switch vm.loadingState {
+                case .idle, .loading:
+                    skeletonView
+                case .loaded where vm.filteredEntries.isEmpty:
                     emptyState
-                } else {
+                case .loaded:
                     entryList
+                case .error(let msg):
+                    errorView(msg)
                 }
 
                 RecordFloatingButton {
                     showRecordingSheet = true
                 }
                 .padding(.bottom, PMDesign.spacingL)
+
+                // Undo snackbar
+                if vm.showUndoSnackbar {
+                    undoSnackbar
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .padding(.bottom, 90)
+                }
             }
             .background(PMDesign.background)
             .navigationTitle("Diario")
@@ -37,6 +49,35 @@ struct JournalView: View {
         }
     }
 
+    // MARK: - Skeleton Loading
+
+    private var skeletonView: some View {
+        ScrollView {
+            LazyVStack(spacing: PMDesign.spacingM) {
+                ForEach(0..<3, id: \.self) { _ in
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(PMDesign.textTertiary.opacity(0.15))
+                                .frame(width: 80, height: 12)
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(PMDesign.textTertiary.opacity(0.15))
+                                .frame(height: 14)
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(PMDesign.textTertiary.opacity(0.15))
+                                .frame(width: 200, height: 14)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .shimmer()
+                }
+            }
+            .padding(.horizontal, PMDesign.spacingM)
+        }
+    }
+
+    // MARK: - Entry List
+
     private var entryList: some View {
         ScrollView {
             LazyVStack(spacing: PMDesign.spacingM, pinnedViews: .sectionHeaders) {
@@ -46,10 +87,12 @@ struct JournalView: View {
                             NavigationLink(value: entry.id) {
                                 JournalEntryCard(entry: entry)
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(PressScaleButtonStyle())
                             .contextMenu {
                                 Button(role: .destructive) {
-                                    vm.deleteEntry(id: entry.id, modelContext: modelContext)
+                                    withAnimation(PMDesign.springSnappy) {
+                                        vm.deleteEntry(id: entry.id, modelContext: modelContext)
+                                    }
                                 } label: {
                                     Label("Apagar", systemImage: "trash")
                                 }
@@ -58,7 +101,7 @@ struct JournalView: View {
                     } header: {
                         HStack {
                             Text(section)
-                                .font(.caption.weight(.semibold))
+                                .font(PMDesign.caption2Rounded)
                                 .foregroundStyle(PMDesign.textSecondary)
                                 .textCase(.uppercase)
                             Spacer()
@@ -79,17 +122,59 @@ struct JournalView: View {
         }
     }
 
+    // MARK: - Empty State
+
     private var emptyState: some View {
         VStack(spacing: 16) {
             Image(systemName: "waveform.and.mic")
                 .font(.system(size: 56))
-                .foregroundStyle(PMDesign.subtleGradient)
+                .foregroundStyle(PMDesign.brandPrimary.opacity(0.4))
+                .symbolEffect(.pulse)
 
             Text("Toque no microfone para\nregistrar seu primeiro pensamento")
+                .font(PMDesign.subheadlineRounded)
+                .foregroundStyle(PMDesign.textSecondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Error
+
+    private func errorView(_ message: String) -> some View {
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 48))
+                .foregroundStyle(PMDesign.warning)
+            Text(message)
                 .font(.subheadline)
                 .foregroundStyle(PMDesign.textSecondary)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Undo Snackbar
+
+    private var undoSnackbar: some View {
+        HStack {
+            Text("Entrada apagada")
+                .font(PMDesign.captionRounded)
+                .foregroundStyle(PMDesign.textPrimary)
+            Spacer()
+            Button("Desfazer") {
+                withAnimation(PMDesign.springSnappy) {
+                    vm.undoDelete(modelContext: modelContext)
+                }
+            }
+            .font(.caption.weight(.bold))
+            .foregroundStyle(PMDesign.brandPrimary)
+        }
+        .padding(.horizontal, PMDesign.spacingM)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial)
+        .clipShape(Capsule())
+        .padding(.horizontal, PMDesign.spacingL)
+        .softShadow()
     }
 }

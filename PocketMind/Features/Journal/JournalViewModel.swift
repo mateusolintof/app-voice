@@ -2,14 +2,26 @@ import Foundation
 import SwiftData
 import Observation
 
+enum LoadingState {
+    case idle
+    case loading
+    case loaded
+    case error(String)
+}
+
 @MainActor
 @Observable
 final class JournalViewModel {
     var entries: [JournalEntryEntity] = []
     var searchText: String = ""
+    var loadingState: LoadingState = .idle
+    var recentlyDeleted: (entry: JournalEntryEntity, index: Int)?
+    var showUndoSnackbar = false
 
     func loadEntries(modelContext: ModelContext) {
+        loadingState = .loading
         entries = JournalRepository.fetchAllEntries(in: modelContext)
+        loadingState = .loaded
     }
 
     var filteredEntries: [JournalEntryEntity] {
@@ -47,7 +59,33 @@ final class JournalViewModel {
     }
 
     func deleteEntry(id: UUID, modelContext: ModelContext) {
+        if let index = entries.firstIndex(where: { $0.id == id }) {
+            let entry = entries[index]
+            recentlyDeleted = (entry, index)
+            showUndoSnackbar = true
+        }
+
         JournalRepository.deleteEntry(id: id, in: modelContext)
+        loadEntries(modelContext: modelContext)
+
+        Task {
+            try? await Task.sleep(for: .seconds(4))
+            showUndoSnackbar = false
+            recentlyDeleted = nil
+        }
+    }
+
+    func undoDelete(modelContext: ModelContext) {
+        guard let deleted = recentlyDeleted else { return }
+        JournalRepository.saveEntry(
+            transcribedText: deleted.entry.transcribedText,
+            audioFilePath: deleted.entry.audioFilePath,
+            aiResponse: deleted.entry.aiResponse,
+            slot: deleted.entry.slot,
+            in: modelContext
+        )
+        recentlyDeleted = nil
+        showUndoSnackbar = false
         loadEntries(modelContext: modelContext)
     }
 }

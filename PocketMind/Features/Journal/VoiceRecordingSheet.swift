@@ -5,26 +5,30 @@ struct VoiceRecordingSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @State private var vm = VoiceRecordingViewModel()
+    @State private var spinnerRotation: Double = 0
 
     var body: some View {
         NavigationStack {
             ZStack {
                 PMDesign.background.ignoresSafeArea()
 
-                switch vm.state {
-                case .idle:
-                    idleView
-                case .recording:
-                    recordingView
-                case .transcribing:
-                    processingView(message: "Transcrevendo...")
-                case .transcribed:
-                    transcribedView
-                case .processingAI:
-                    processingView(message: "Coach pensando...")
-                case .complete:
-                    completeView
+                Group {
+                    switch vm.state {
+                    case .idle:
+                        idleView
+                    case .recording:
+                        recordingView
+                    case .transcribing:
+                        processingView(message: "Transcrevendo...")
+                    case .transcribed:
+                        transcribedView
+                    case .processingAI:
+                        processingView(message: "Coach pensando...")
+                    case .complete:
+                        completeView
+                    }
                 }
+                .transition(.opacity.combined(with: .scale(scale: 0.98)))
             }
             .navigationTitle("Gravar")
             .navigationBarTitleDisplayMode(.inline)
@@ -58,12 +62,13 @@ struct VoiceRecordingSheet: View {
             Image(systemName: "waveform.and.mic")
                 .font(.system(size: 48))
                 .foregroundStyle(PMDesign.textTertiary)
+                .symbolEffect(.pulse)
 
             Text("Toque para comecar a gravar")
-                .font(.subheadline)
+                .font(PMDesign.subheadlineRounded)
                 .foregroundStyle(PMDesign.textSecondary)
 
-            recordButton(isRecording: false)
+            recordButton
 
             Spacer()
         }
@@ -90,16 +95,36 @@ struct VoiceRecordingSheet: View {
         }
     }
 
-    // MARK: - Processing
+    // MARK: - Processing (custom spinner)
 
     private func processingView(message: String) -> some View {
         VStack(spacing: 20) {
             Spacer()
-            ProgressView()
-                .scaleEffect(1.2)
+
+            ZStack {
+                Circle()
+                    .stroke(PMDesign.textTertiary.opacity(0.15), lineWidth: 3)
+                    .frame(width: 48, height: 48)
+
+                Circle()
+                    .trim(from: 0, to: 0.3)
+                    .stroke(PMDesign.brandGradient, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .frame(width: 48, height: 48)
+                    .rotationEffect(.degrees(spinnerRotation))
+            }
+            .onAppear {
+                withAnimation(.linear(duration: 1).repeatForever(autoreverses: false)) {
+                    spinnerRotation = 360
+                }
+            }
+            .onDisappear {
+                spinnerRotation = 0
+            }
+
             Text(message)
-                .font(.subheadline)
+                .font(PMDesign.subheadlineRounded)
                 .foregroundStyle(PMDesign.textSecondary)
+
             Spacer()
         }
     }
@@ -110,7 +135,7 @@ struct VoiceRecordingSheet: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 Text("Voce disse:")
-                    .font(.caption.weight(.semibold))
+                    .font(PMDesign.captionRounded)
                     .foregroundStyle(PMDesign.textSecondary)
 
                 TextEditor(text: $vm.transcribedText)
@@ -130,6 +155,12 @@ struct VoiceRecordingSheet: View {
                     vm.saveToJournal(modelContext: modelContext)
                     dismiss()
                 }
+
+                GlassButton(title: "Gravar novamente", icon: "arrow.counterclockwise", style: .secondary) {
+                    withAnimation(PMDesign.springSnappy) {
+                        vm.reRecord()
+                    }
+                }
             }
             .padding(PMDesign.spacingM)
         }
@@ -143,7 +174,7 @@ struct VoiceRecordingSheet: View {
                 // User text
                 VStack(alignment: .leading, spacing: 6) {
                     Label("Voce", systemImage: "person.fill")
-                        .font(.caption.weight(.semibold))
+                        .font(PMDesign.captionRounded)
                         .foregroundStyle(PMDesign.textSecondary)
 
                     Text(vm.transcribedText)
@@ -157,14 +188,14 @@ struct VoiceRecordingSheet: View {
                 // AI response
                 VStack(alignment: .leading, spacing: 6) {
                     Label("Coach", systemImage: "brain.head.profile.fill")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(PMDesign.accent)
+                        .font(PMDesign.captionRounded)
+                        .foregroundStyle(PMDesign.brandPrimary)
 
                     Text(vm.aiResponse)
                         .font(.body)
                         .padding(PMDesign.spacingM)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(PMDesign.accent.opacity(0.08))
+                        .background(PMDesign.brandPrimary.opacity(0.08))
                         .clipShape(RoundedRectangle(cornerRadius: PMDesign.cornerMedium, style: .continuous))
                 }
 
@@ -187,10 +218,10 @@ struct VoiceRecordingSheet: View {
 
                 // Commitment
                 if let turn = vm.lastTurn, !turn.contract.statement.isEmpty {
-                    GlassCard {
+                    GlassCard(glowColor: PMDesign.success, glowOpacity: 0.3) {
                         VStack(alignment: .leading, spacing: 8) {
                             Label("Compromisso", systemImage: "checkmark.seal.fill")
-                                .font(.caption.weight(.semibold))
+                                .font(PMDesign.captionRounded)
                                 .foregroundStyle(PMDesign.success)
 
                             Text(turn.contract.statement)
@@ -216,6 +247,12 @@ struct VoiceRecordingSheet: View {
                     vm.saveToJournal(modelContext: modelContext)
                     dismiss()
                 }
+
+                GlassButton(title: "Gravar novamente", icon: "arrow.counterclockwise", style: .secondary) {
+                    withAnimation(PMDesign.springSnappy) {
+                        vm.reRecord()
+                    }
+                }
             }
             .padding(PMDesign.spacingM)
         }
@@ -223,7 +260,7 @@ struct VoiceRecordingSheet: View {
 
     // MARK: - Buttons
 
-    private func recordButton(isRecording: Bool) -> some View {
+    private var recordButton: some View {
         Button {
             vm.startRecording()
         } label: {
@@ -231,14 +268,14 @@ struct VoiceRecordingSheet: View {
                 Circle()
                     .fill(PMDesign.brandGradient)
                     .frame(width: 80, height: 80)
-                    .shadow(color: PMDesign.accent.opacity(0.4), radius: 16)
+                    .softShadow(radius: 16, color: PMDesign.brandPrimary.opacity(0.4))
 
                 Image(systemName: "mic.fill")
                     .font(.title)
                     .foregroundStyle(.white)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressScaleButtonStyle())
     }
 
     private var stopButton: some View {
@@ -249,13 +286,13 @@ struct VoiceRecordingSheet: View {
                 Circle()
                     .fill(PMDesign.danger)
                     .frame(width: 80, height: 80)
-                    .shadow(color: PMDesign.danger.opacity(0.4), radius: 16)
+                    .softShadow(radius: 16, color: PMDesign.danger.opacity(0.4))
 
                 RoundedRectangle(cornerRadius: 8)
                     .fill(.white)
                     .frame(width: 28, height: 28)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressScaleButtonStyle())
     }
 }

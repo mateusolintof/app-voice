@@ -37,25 +37,29 @@ struct RitualsView: View {
                     VStack(alignment: .leading, spacing: PMDesign.spacingS) {
                         HStack {
                             Text("Compromissos Ativos")
-                                .font(.subheadline.weight(.semibold))
+                                .font(PMDesign.headlineRounded)
                                 .foregroundStyle(PMDesign.textPrimary)
 
                             Spacer()
 
                             Button {
-                                withAnimation(.spring(response: 0.35)) {
+                                let generator = UIImpactFeedbackGenerator(style: .light)
+                                generator.impactOccurred()
+                                withAnimation(PMDesign.springSnappy) {
                                     vm.showNewCommitment.toggle()
                                 }
                             } label: {
                                 Image(systemName: vm.showNewCommitment ? "xmark.circle.fill" : "plus.circle.fill")
                                     .font(.title3)
-                                    .foregroundStyle(PMDesign.accent)
+                                    .foregroundStyle(PMDesign.brandPrimary)
                             }
+                            .buttonStyle(PressScaleButtonStyle())
                         }
 
                         // New commitment form
                         if vm.showNewCommitment {
                             newCommitmentForm
+                                .transition(.opacity.combined(with: .move(edge: .top)))
                         }
 
                         if vm.todayCommitments.isEmpty {
@@ -66,7 +70,7 @@ struct RitualsView: View {
                                         .font(.title2)
                                         .foregroundStyle(PMDesign.textTertiary)
                                     Text("Nenhum compromisso para hoje")
-                                        .font(.caption)
+                                        .font(PMDesign.captionRounded)
                                         .foregroundStyle(PMDesign.textTertiary)
                                 }
                                 .padding(.vertical, PMDesign.spacingL)
@@ -75,7 +79,9 @@ struct RitualsView: View {
                         } else {
                             ForEach(vm.todayCommitments, id: \.id) { commitment in
                                 CommitmentRow(commitment: commitment) { status in
-                                    vm.markStatus(commitment, status: status, modelContext: modelContext)
+                                    withAnimation(PMDesign.springSnappy) {
+                                        vm.markStatus(commitment, status: status, modelContext: modelContext)
+                                    }
                                 }
                             }
                         }
@@ -83,7 +89,7 @@ struct RitualsView: View {
 
                     // Evening review button
                     if vm.selectedSlot == .evening {
-                        GlassButton(title: "Revisao do Dia", icon: "moon.stars.fill", style: .primary) {
+                        GlassButton(title: "Revisao do Dia", icon: "moon.stars.fill", style: .gold) {
                             showReview = true
                         }
                     }
@@ -116,8 +122,8 @@ struct RitualsView: View {
         GlassCard {
             VStack(alignment: .leading, spacing: PMDesign.spacingS) {
                 Label("Novo Compromisso", systemImage: "plus.circle")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(PMDesign.accent)
+                    .font(PMDesign.captionRounded)
+                    .foregroundStyle(PMDesign.brandPrimary)
 
                 TextField("Compromisso", text: $vm.newStatement)
                     .font(.subheadline)

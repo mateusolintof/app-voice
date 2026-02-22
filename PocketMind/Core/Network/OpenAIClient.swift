@@ -5,7 +5,11 @@ final class OpenAIClient: ObservableObject {
     private let baseURL = "https://api.openai.com/v1"
 
     func transcribeAudio(fileURL: URL, apiKey: String) async throws -> String {
-        var request = URLRequest(url: URL(string: "\(baseURL)/audio/transcriptions")!)
+        guard let url = URL(string: "\(baseURL)/audio/transcriptions") else {
+            throw URLError(.badURL)
+        }
+
+        var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
 
@@ -49,7 +53,11 @@ final class OpenAIClient: ObservableObject {
     }
 
     private func performJSONRequest(path: String, body: [String: Any], apiKey: String) async throws -> Data {
-        var request = URLRequest(url: URL(string: "\(baseURL)\(path)")!)
+        guard let url = URL(string: "\(baseURL)\(path)") else {
+            throw URLError(.badURL)
+        }
+
+        var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
