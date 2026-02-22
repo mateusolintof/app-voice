@@ -10,7 +10,7 @@ struct PocketMindApp: App {
             TherapySessionEntity.self,
             DailyReviewEntity.self,
             MetricEventEntity.self,
-            IntegrationQueueItemEntity.self
+            JournalEntryEntity.self
         ])
 
         let configuration = ModelConfiguration("PocketMindTherapy", schema: schema)

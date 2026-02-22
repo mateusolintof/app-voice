@@ -127,24 +127,4 @@ enum TherapyRepository {
         try? modelContext.save()
     }
 
-    static func enqueueIntegration(kind: String, payload: String, in modelContext: ModelContext) {
-        modelContext.insert(IntegrationQueueItemEntity(kind: kind, payload: payload))
-        try? modelContext.save()
-    }
-
-    static func queuedIntegrations(in modelContext: ModelContext) -> [IntegrationQueueItemEntity] {
-        let descriptor = FetchDescriptor<IntegrationQueueItemEntity>(sortBy: [SortDescriptor(\.createdAt)])
-        return (try? modelContext.fetch(descriptor)) ?? []
-    }
-
-    static func removeQueueItem(_ item: IntegrationQueueItemEntity, in modelContext: ModelContext) {
-        modelContext.delete(item)
-        try? modelContext.save()
-    }
-
-    static func registerRetry(for item: IntegrationQueueItemEntity, error: String, in modelContext: ModelContext) {
-        item.retries += 1
-        item.lastError = error
-        try? modelContext.save()
-    }
 }

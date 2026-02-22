@@ -1,13 +1,12 @@
 import Foundation
-import SwiftUI
 import SwiftData
 import Observation
 
 @MainActor
 @Observable
-final class SessionViewModel {
-    var transcribedText: String = ""
+final class RitualsViewModel {
     var selectedSlot: RitualSlot = .morning
+    var transcribedText: String = ""
     var currentMission: String = ""
     var frictionNote: String = ""
 
@@ -19,9 +18,24 @@ final class SessionViewModel {
     var lastRitual: RitualOutput?
     var lastRecovery: RecoveryOutput?
 
+    var todayCommitments: [CommitmentEntity] = []
+
+    // Commitment creation
+    var newStatement: String = ""
+    var newAction: String = ""
+    var durationMinutes: Int = 15
+    var dueAt: Date = Date().addingTimeInterval(60 * 60)
+    var showNewCommitment = false
+
     private let audioRecorder = AudioRecorder()
     private let openAIClient = OpenAIClient()
     private let therapyEngine: TherapyEngine = OpenAITherapyEngine()
+
+    func loadCommitments(modelContext: ModelContext) {
+        todayCommitments = TherapyRepository.fetchCommitments(for: Date(), in: modelContext)
+    }
+
+    // MARK: - Recording
 
     func toggleRecording() {
         if audioRecorder.isRecording {
@@ -35,9 +49,11 @@ final class SessionViewModel {
         }
     }
 
+    // MARK: - Therapy Actions
+
     func runTherapyTurn(modelContext: ModelContext) async {
         guard !transcribedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            errorMessage = "Grave ou digite algo antes de rodar a sessão."
+            errorMessage = "Grave ou digite algo antes de rodar a sessao."
             return
         }
 
@@ -52,18 +68,17 @@ final class SessionViewModel {
             currentMission = turn.meaningAnchor
 
             TherapyRepository.storeSession(
-                turn: turn,
-                input: transcribedText,
-                slot: selectedSlot,
-                phase: .intervention,
+                turn: turn, input: transcribedText,
+                slot: selectedSlot, phase: .intervention,
                 in: modelContext
             )
             TherapyRepository.upsertCommitment(turn.contract, slot: selectedSlot, in: modelContext)
             TherapyRepository.logMetric(name: "session_turn_completed", value: 1, context: selectedSlot.rawValue, in: modelContext)
 
             transcribedText = ""
+            loadCommitments(modelContext: modelContext)
         } catch {
-            errorMessage = "Falha ao executar sessão: \(error.localizedDescription)"
+            errorMessage = "Falha ao executar sessao: \(error.localizedDescription)"
         }
     }
 
@@ -92,6 +107,8 @@ final class SessionViewModel {
             currentMission = ritual.mission
             TherapyRepository.upsertCommitment(ritual.contract, slot: selectedSlot, in: modelContext)
             TherapyRepository.logMetric(name: "ritual_completed", value: 1, context: selectedSlot.rawValue, in: modelContext)
+
+            loadCommitments(modelContext: modelContext)
         } catch {
             errorMessage = "Falha no ritual: \(error.localizedDescription)"
         }
@@ -113,27 +130,74 @@ final class SessionViewModel {
                     avoidanceScore: 0.2
                 ),
                 reframing: recovery.summary,
-                meaningAnchor: "Retomar execução com intenção clara.",
+                meaningAnchor: "Retomar execucao com intencao clara.",
                 contract: recovery.contract,
-                followupQuestion: "Você consegue iniciar isso agora?"
+                followupQuestion: "Voce consegue iniciar isso agora?"
             )
 
             TherapyRepository.upsertCommitment(recovery.contract, slot: selectedSlot, in: modelContext)
             TherapyRepository.logMetric(name: "recovery_completed", value: 1, context: selectedSlot.rawValue, in: modelContext)
+
+            loadCommitments(modelContext: modelContext)
         } catch {
             errorMessage = "Falha no recovery sprint: \(error.localizedDescription)"
         }
     }
 
+    // MARK: - Commitments
+
+    func createCommitment(modelContext: ModelContext) {
+        let statement = newStatement.trimmingCharacters(in: .whitespacesAndNewlines)
+        let action = newAction.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !statement.isEmpty, !action.isEmpty else {
+            errorMessage = "Preencha compromisso e proxima acao."
+            return
+        }
+
+        let contract = CommitmentContract(
+            statement: statement,
+            nextAction: action,
+            durationMinutes: max(5, min(durationMinutes, 60)),
+            dueAt: dueAt,
+            accountabilityPrompt: "Voce executou a acao combinada?",
+            status: .planned
+        )
+
+        TherapyRepository.upsertCommitment(contract, slot: selectedSlot, in: modelContext)
+        TherapyRepository.logMetric(name: "manual_commitment_created", value: 1, context: selectedSlot.rawValue, in: modelContext)
+
+        newStatement = ""
+        newAction = ""
+        durationMinutes = 15
+        dueAt = Date().addingTimeInterval(60 * 60)
+        showNewCommitment = false
+        loadCommitments(modelContext: modelContext)
+    }
+
+    func markStatus(_ commitment: CommitmentEntity, status: CommitmentStatus, modelContext: ModelContext) {
+        TherapyRepository.updateCommitmentStatus(id: commitment.id, status: status, in: modelContext)
+        TherapyRepository.logMetric(name: "commitment_status_change", value: 1, context: status.rawValue, in: modelContext)
+        loadCommitments(modelContext: modelContext)
+    }
+
+    func completionRate() -> Double {
+        guard !todayCommitments.isEmpty else { return 0 }
+        let done = todayCommitments.filter { CommitmentStatus(rawValue: $0.statusRaw) == .completed }.count
+        return Double(done) / Double(todayCommitments.count)
+    }
+
+    // MARK: - Private
+
     private func processRecording() {
         guard let fileURL = audioRecorder.recordingURL else {
-            errorMessage = "Arquivo de áudio indisponível."
+            errorMessage = "Arquivo de audio indisponivel."
             return
         }
 
         let key = UserDefaults.standard.string(forKey: "openAIKey") ?? ""
         guard !key.isEmpty else {
-            errorMessage = "Configure sua chave OpenAI em Config."
+            errorMessage = "Configure sua chave OpenAI em Perfil."
             return
         }
 
@@ -146,7 +210,7 @@ final class SessionViewModel {
                 let transcript = try await openAIClient.transcribeAudio(fileURL: fileURL, apiKey: key)
                 transcribedText = transcript
             } catch {
-                errorMessage = "Falha na transcrição: \(error.localizedDescription)"
+                errorMessage = "Falha na transcricao: \(error.localizedDescription)"
             }
         }
     }

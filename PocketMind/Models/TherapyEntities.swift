@@ -160,20 +160,51 @@ final class MetricEventEntity {
 }
 
 @Model
-final class IntegrationQueueItemEntity {
+final class JournalEntryEntity {
     @Attribute(.unique) var id: UUID
-    var kind: String
-    var payload: String
-    var retries: Int
-    var lastError: String
+    var transcribedText: String
+    var audioFilePath: String?
+    var aiResponse: String?
+    var rawReality: String?
+    var reframing: String?
+    var meaningAnchor: String?
+    var distortionTagsRaw: String
+    var moodTag: String?
+    var commitmentId: UUID?
+    var slotRaw: String
     var createdAt: Date
 
-    init(kind: String, payload: String) {
+    init(
+        transcribedText: String,
+        audioFilePath: String? = nil,
+        aiResponse: String? = nil,
+        rawReality: String? = nil,
+        reframing: String? = nil,
+        meaningAnchor: String? = nil,
+        distortionTags: [String] = [],
+        moodTag: String? = nil,
+        commitmentId: UUID? = nil,
+        slot: RitualSlot = .morning
+    ) {
         self.id = UUID()
-        self.kind = kind
-        self.payload = payload
-        self.retries = 0
-        self.lastError = ""
+        self.transcribedText = transcribedText
+        self.audioFilePath = audioFilePath
+        self.aiResponse = aiResponse
+        self.rawReality = rawReality
+        self.reframing = reframing
+        self.meaningAnchor = meaningAnchor
+        self.distortionTagsRaw = distortionTags.joined(separator: "|")
+        self.moodTag = moodTag
+        self.commitmentId = commitmentId
+        self.slotRaw = slot.rawValue
         self.createdAt = .now
+    }
+
+    var distortionTags: [String] {
+        distortionTagsRaw.split(separator: "|").map(String.init)
+    }
+
+    var slot: RitualSlot {
+        RitualSlot(rawValue: slotRaw) ?? .morning
     }
 }

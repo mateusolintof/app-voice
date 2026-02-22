@@ -7,6 +7,10 @@ final class AudioRecorder: NSObject {
     var audioRecorder: AVAudioRecorder?
     var isRecording = false
     var recordingURL: URL?
+    var audioLevels: [CGFloat] = Array(repeating: 0, count: 40)
+
+    private var meteringTimer: Timer?
+    private let barCount = 40
 
     override init() {
         super.init()
@@ -31,7 +35,7 @@ final class AudioRecorder: NSObject {
 
         let settings: [String: Any] = [
             AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-            AVSampleRateKey: 12000,
+            AVSampleRateKey: 44100,
             AVNumberOfChannelsKey: 1,
             AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
         ]
@@ -39,9 +43,11 @@ final class AudioRecorder: NSObject {
         do {
             audioRecorder = try AVAudioRecorder(url: fileName, settings: settings)
             audioRecorder?.delegate = self
+            audioRecorder?.isMeteringEnabled = true
             audioRecorder?.record()
             isRecording = true
             recordingURL = nil
+            startMetering()
         } catch {
             print("Could not start recording: \(error)")
         }
@@ -51,6 +57,63 @@ final class AudioRecorder: NSObject {
         audioRecorder?.stop()
         isRecording = false
         recordingURL = audioRecorder?.url
+        stopMetering()
+        audioLevels = Array(repeating: 0, count: barCount)
+    }
+
+    func persistAudio() -> String? {
+        guard let sourceURL = recordingURL else { return nil }
+
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let audioDir = docs.appendingPathComponent("JournalAudio", isDirectory: true)
+
+        if !FileManager.default.fileExists(atPath: audioDir.path) {
+            try? FileManager.default.createDirectory(at: audioDir, withIntermediateDirectories: true)
+        }
+
+        let fileName = sourceURL.lastPathComponent
+        let destURL = audioDir.appendingPathComponent(fileName)
+
+        do {
+            try FileManager.default.copyItem(at: sourceURL, to: destURL)
+            return "JournalAudio/\(fileName)"
+        } catch {
+            print("Failed to persist audio: \(error)")
+            return nil
+        }
+    }
+
+    // MARK: - Metering
+
+    private func startMetering() {
+        meteringTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
+            self?.updateLevels()
+        }
+    }
+
+    private func stopMetering() {
+        meteringTimer?.invalidate()
+        meteringTimer = nil
+    }
+
+    private func updateLevels() {
+        guard let recorder = audioRecorder, recorder.isRecording else { return }
+        recorder.updateMeters()
+
+        let power = recorder.averagePower(forChannel: 0)
+        let normalized = normalizedLevel(from: power)
+
+        var newLevels = audioLevels
+        newLevels.removeFirst()
+        newLevels.append(normalized)
+        audioLevels = newLevels
+    }
+
+    private func normalizedLevel(from power: Float) -> CGFloat {
+        let minDb: Float = -60
+        let clampedPower = max(power, minDb)
+        let normalized = (clampedPower - minDb) / (0 - minDb)
+        return CGFloat(normalized)
     }
 }
 
