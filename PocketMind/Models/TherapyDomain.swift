@@ -71,6 +71,36 @@ enum CommitmentStatus: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+enum MoodOption: String, CaseIterable, Identifiable {
+    case pesado
+    case tenso
+    case neutro
+    case bem
+    case motivado
+
+    var id: String { rawValue }
+
+    var emoji: String {
+        switch self {
+        case .pesado: return "😞"
+        case .tenso: return "😕"
+        case .neutro: return "😐"
+        case .bem: return "😊"
+        case .motivado: return "🔥"
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .pesado: return "Pesado"
+        case .tenso: return "Tenso"
+        case .neutro: return "Neutro"
+        case .bem: return "Bem"
+        case .motivado: return "Motivado"
+        }
+    }
+}
+
 struct ControlSplit: Codable, Hashable {
     var underControl: [String]
     var notUnderControl: [String]

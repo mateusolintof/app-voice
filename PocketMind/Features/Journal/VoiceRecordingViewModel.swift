@@ -20,6 +20,7 @@ final class VoiceRecordingViewModel {
     var lastTurn: TherapyTurnEnvelope?
     var errorMessage: String?
     var recordingDuration: TimeInterval = 0
+    var selectedMood: MoodOption?
 
     let audioRecorder = AudioRecorder()
     private let openAIClient = OpenAIClient()
@@ -99,13 +100,16 @@ final class VoiceRecordingViewModel {
 
     func saveToJournal(modelContext: ModelContext) {
         let audioPath = audioRecorder.persistAudio()
+        let profile = TherapyRepository.currentProfile(in: modelContext)
+        let slot = detectCurrentSlot(profile: profile)
 
         JournalRepository.saveEntry(
             transcribedText: transcribedText,
             audioFilePath: audioPath,
             aiResponse: aiResponse.isEmpty ? nil : aiResponse,
             turn: lastTurn,
-            slot: detectCurrentSlot(),
+            moodTag: selectedMood?.rawValue,
+            slot: slot,
             in: modelContext
         )
 
@@ -113,13 +117,13 @@ final class VoiceRecordingViewModel {
             TherapyRepository.storeSession(
                 turn: turn,
                 input: transcribedText,
-                slot: detectCurrentSlot(),
+                slot: slot,
                 phase: .intervention,
                 in: modelContext
             )
             TherapyRepository.upsertCommitment(
                 turn.contract,
-                slot: detectCurrentSlot(),
+                slot: slot,
                 in: modelContext
             )
         }
@@ -127,7 +131,7 @@ final class VoiceRecordingViewModel {
         TherapyRepository.logMetric(
             name: "journal_entry_saved",
             value: 1,
-            context: detectCurrentSlot().rawValue,
+            context: slot.rawValue,
             in: modelContext
         )
 
@@ -143,6 +147,7 @@ final class VoiceRecordingViewModel {
         lastTurn = nil
         errorMessage = nil
         recordingDuration = 0
+        selectedMood = nil
     }
 
     // MARK: - Private
@@ -181,15 +186,31 @@ final class VoiceRecordingViewModel {
 
         return TherapyContext(
             profile: profile,
-            activeSlot: detectCurrentSlot(),
+            activeSlot: detectCurrentSlot(profile: profile),
             currentMission: "",
             pendingCommitments: pending,
             recentFrictionNotes: []
         )
     }
 
-    private func detectCurrentSlot() -> RitualSlot {
+    func detectCurrentSlot(profile: TherapyProfile? = nil) -> RitualSlot {
         let hour = Calendar.current.component(.hour, from: Date())
+
+        if let profile {
+            let morningH = Calendar.current.component(.hour, from: profile.morningWindow.start)
+            let morningEnd = Calendar.current.component(.hour, from: profile.morningWindow.end)
+            let middayH = Calendar.current.component(.hour, from: profile.middayWindow.start)
+            let middayEnd = Calendar.current.component(.hour, from: profile.middayWindow.end)
+
+            if hour >= morningH && hour < morningEnd {
+                return .morning
+            } else if hour >= middayH && hour < middayEnd {
+                return .midday
+            } else {
+                return .evening
+            }
+        }
+
         switch hour {
         case 5..<12: return .morning
         case 12..<17: return .midday

@@ -73,6 +73,11 @@ enum TherapyRepository {
         return (try? modelContext.fetch(descriptor)) ?? []
     }
 
+    static func fetchCommitment(id: UUID, in modelContext: ModelContext) -> CommitmentEntity? {
+        let descriptor = FetchDescriptor<CommitmentEntity>(predicate: #Predicate { $0.id == id })
+        return try? modelContext.fetch(descriptor).first
+    }
+
     static func updateCommitmentStatus(id: UUID, status: CommitmentStatus, in modelContext: ModelContext) {
         let descriptor = FetchDescriptor<CommitmentEntity>(predicate: #Predicate { $0.id == id })
 

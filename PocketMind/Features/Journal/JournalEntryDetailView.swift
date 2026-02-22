@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct JournalEntryDetailView: View {
+    @Environment(\.modelContext) private var modelContext
     let entry: JournalEntryEntity
     @State private var appeared = false
 
@@ -17,8 +18,9 @@ struct JournalEntryDetailView: View {
 
                     Spacer()
 
-                    if let mood = entry.moodTag, !mood.isEmpty {
-                        Text(mood)
+                    if let mood = entry.moodTag, !mood.isEmpty,
+                       let moodOption = MoodOption(rawValue: mood) {
+                        Text("\(moodOption.emoji) \(moodOption.label)")
                             .font(.caption.weight(.semibold))
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
@@ -26,6 +28,11 @@ struct JournalEntryDetailView: View {
                             .foregroundStyle(PMDesign.brandPrimary)
                             .clipShape(Capsule())
                     }
+                }
+
+                // Audio player
+                if let audioPath = entry.audioFilePath, !audioPath.isEmpty {
+                    AudioPlayerView(audioFilePath: audioPath)
                 }
 
                 // User bubble
@@ -120,6 +127,38 @@ struct JournalEntryDetailView: View {
                                         .clipShape(Capsule())
                                 }
                             }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .opacity(appeared ? 1 : 0)
+                    .offset(y: appeared ? 0 : 10)
+                }
+
+                // Linked commitment
+                if let commitmentId = entry.commitmentId,
+                   let commitment = TherapyRepository.fetchCommitment(id: commitmentId, in: modelContext) {
+                    let status = CommitmentStatus(rawValue: commitment.statusRaw) ?? .planned
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label("Compromisso Relacionado", systemImage: "link")
+                                .font(PMDesign.captionRounded)
+                                .foregroundStyle(PMDesign.brandPrimary)
+
+                            Text(commitment.statement)
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(PMDesign.textPrimary)
+
+                            Text(commitment.nextAction)
+                                .font(.caption)
+                                .foregroundStyle(PMDesign.textSecondary)
+
+                            Text(status.title)
+                                .font(.caption2.weight(.semibold))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .foregroundStyle(status == .completed ? PMDesign.success : PMDesign.brandPrimary)
+                                .background((status == .completed ? PMDesign.success : PMDesign.brandPrimary).opacity(0.12))
+                                .clipShape(Capsule())
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }

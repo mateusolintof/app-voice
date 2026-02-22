@@ -65,6 +65,18 @@ struct CommitmentRow: View {
                     .clipShape(Capsule())
             }
         }
+        .swipeActions(edge: .leading) {
+            if currentStatus != .deferred && currentStatus != .completed {
+                Button {
+                    let generator = UIImpactFeedbackGenerator(style: .medium)
+                    generator.impactOccurred()
+                    onStatusChange(.deferred)
+                } label: {
+                    Label("Adiar", systemImage: "pause.circle.fill")
+                }
+                .tint(PMDesign.warning)
+            }
+        }
     }
 
     private var statusColor: Color {

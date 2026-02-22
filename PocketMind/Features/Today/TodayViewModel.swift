@@ -16,8 +16,9 @@ final class TodayViewModel {
     var recentEntry: JournalEntryEntity?
 
     func load(modelContext: ModelContext) {
+        let profile = TherapyRepository.currentProfile(in: modelContext)
         updateGreeting()
-        updateSlot()
+        updateSlot(profile: profile)
         loadMission(modelContext: modelContext)
         loadJournalStats(modelContext: modelContext)
         loadCommitmentStats(modelContext: modelContext)
@@ -26,22 +27,44 @@ final class TodayViewModel {
 
     private func updateGreeting() {
         let hour = Calendar.current.component(.hour, from: Date())
+        let userName = UserDefaults.standard.string(forKey: "userName") ?? ""
+        let nameSuffix = userName.isEmpty ? "" : ", \(userName)"
+
         switch hour {
         case 5..<12:
-            greeting = "Bom dia"
+            greeting = "Bom dia\(nameSuffix)"
         case 12..<18:
-            greeting = "Boa tarde"
+            greeting = "Boa tarde\(nameSuffix)"
         default:
-            greeting = "Boa noite"
+            greeting = "Boa noite\(nameSuffix)"
         }
     }
 
-    private func updateSlot() {
-        let hour = Calendar.current.component(.hour, from: Date())
-        switch hour {
-        case 5..<12: currentSlot = .morning
-        case 12..<17: currentSlot = .midday
-        default: currentSlot = .evening
+    private func updateSlot(profile: TherapyProfile? = nil) {
+        let now = Date()
+        let calendar = Calendar.current
+
+        if let profile {
+            let morningH = calendar.component(.hour, from: profile.morningWindow.start)
+            let morningEnd = calendar.component(.hour, from: profile.morningWindow.end)
+            let middayH = calendar.component(.hour, from: profile.middayWindow.start)
+            let middayEnd = calendar.component(.hour, from: profile.middayWindow.end)
+
+            let hour = calendar.component(.hour, from: now)
+            if hour >= morningH && hour < morningEnd {
+                currentSlot = .morning
+            } else if hour >= middayH && hour < middayEnd {
+                currentSlot = .midday
+            } else {
+                currentSlot = .evening
+            }
+        } else {
+            let hour = calendar.component(.hour, from: now)
+            switch hour {
+            case 5..<12: currentSlot = .morning
+            case 12..<17: currentSlot = .midday
+            default: currentSlot = .evening
+            }
         }
     }
 

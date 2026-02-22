@@ -29,8 +29,9 @@ struct JournalEntryCard: View {
 
                         Spacer()
 
-                        if let mood = entry.moodTag, !mood.isEmpty {
-                            Text(mood)
+                        if let mood = entry.moodTag, !mood.isEmpty,
+                           let moodOption = MoodOption(rawValue: mood) {
+                            Text("\(moodOption.emoji) \(moodOption.label)")
                                 .font(.caption2.weight(.semibold))
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)

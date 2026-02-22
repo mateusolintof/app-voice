@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var selectedTab = 0
+    @AppStorage("onboardingCompleted") private var onboardingCompleted = false
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -36,6 +37,12 @@ struct ContentView: View {
                     selectedTab = tab
                 }
             }
+        }
+        .fullScreenCover(isPresented: .init(
+            get: { !onboardingCompleted },
+            set: { _ in }
+        )) {
+            OnboardingFlow(isCompleted: $onboardingCompleted)
         }
     }
 }

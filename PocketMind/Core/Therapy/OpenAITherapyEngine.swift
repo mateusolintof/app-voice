@@ -100,13 +100,16 @@ struct OpenAITherapyEngine: TherapyEngine {
     private func buildSystemPrompt(profile: TherapyProfile) -> String {
         let styleIntensity = max(1, min(5, profile.confrontationLevel))
 
+        let modes = profile.defaultModes
+        let methodParts = buildMethodDescription(modes: modes)
+        let methodRules = buildMethodRules(modes: modes)
+
         return """
         Você é um terapeuta cognitivo pessoal para uso individual, direto e confrontador em Português do Brasil.
-        Método obrigatório: CBT + Estoicismo + Logoterapia.
+        Método: \(methodParts).
         Regras:
         1) Faça diagnóstico cognitivo claro, sem rodeios.
-        2) Use dicotomia do controle explicitamente.
-        3) Vincule ação a sentido/proposito pessoal.
+        \(methodRules)
         4) Sempre defina ação de até 15 minutos.
         5) Gere contrato objetivo com horário.
         6) Tom de confronto nível \(styleIntensity)/5: firme, sem agressividade.
@@ -136,6 +139,49 @@ struct OpenAITherapyEngine: TherapyEngine {
           "followupQuestion": "string"
         }
         """
+    }
+
+    private func buildMethodDescription(modes: [InterventionMode]) -> String {
+        if modes.contains(.blended) || modes.count >= 3 {
+            return "CBT + Estoicismo + Logoterapia"
+        }
+
+        var parts: [String] = []
+        if modes.contains(.cbt) {
+            parts.append("Terapia Cognitivo-Comportamental (identificar e reestruturar distorções)")
+        }
+        if modes.contains(.stoic) {
+            parts.append("Estoicismo (dicotomia do controle, foco no que depende de você)")
+        }
+        if modes.contains(.logotherapy) {
+            parts.append("Logoterapia (vincular ação a propósito e sentido pessoal)")
+        }
+
+        return parts.isEmpty ? "CBT + Estoicismo + Logoterapia" : parts.joined(separator: " + ")
+    }
+
+    private func buildMethodRules(modes: [InterventionMode]) -> String {
+        let useAll = modes.contains(.blended) || modes.count >= 3
+
+        var rules: [String] = []
+
+        if useAll || modes.contains(.cbt) {
+            rules.append("2) Identifique distorções cognitivas e reestruture pensamentos disfuncionais.")
+        }
+
+        if useAll || modes.contains(.stoic) {
+            rules.append("2) Use dicotomia do controle explicitamente.")
+        } else {
+            rules.append("2) Separe o que o usuário pode e não pode controlar.")
+        }
+
+        if useAll || modes.contains(.logotherapy) {
+            rules.append("3) Vincule ação a sentido/propósito pessoal.")
+        } else {
+            rules.append("3) Oriente a ação para resultados práticos e mensuráveis.")
+        }
+
+        return rules.joined(separator: "\n")
     }
 
     private func buildTurnPrompt(input: String, context: TherapyContext) -> String {

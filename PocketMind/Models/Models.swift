@@ -20,7 +20,3 @@ enum MessageRole: String, Codable {
     case system
 }
 
-struct AppConfig: Codable {
-    var openAIKey: String = ""
-    var systemPrompt: String = "Você é um assistente pessoal eficiente e direto. Responda sempre em Português do Brasil. Seja conciso."
-}

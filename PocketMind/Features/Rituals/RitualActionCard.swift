@@ -14,8 +14,6 @@ struct RitualActionCard: View {
     let onRunRitual: () -> Void
     let onRunRecovery: () -> Void
 
-    @State private var showResults = false
-
     var body: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: PMDesign.spacingM) {

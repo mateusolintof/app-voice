@@ -145,6 +145,8 @@ struct VoiceRecordingSheet: View {
                     .background(.ultraThinMaterial)
                     .clipShape(RoundedRectangle(cornerRadius: PMDesign.cornerMedium, style: .continuous))
 
+                MoodSelectorRow(selectedMood: $vm.selectedMood)
+
                 GlassButton(title: "Enviar para Coach", icon: "brain.head.profile", style: .primary) {
                     Task {
                         await vm.sendToCoach(modelContext: modelContext)
@@ -242,6 +244,8 @@ struct VoiceRecordingSheet: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
+
+                MoodSelectorRow(selectedMood: $vm.selectedMood)
 
                 GlassButton(title: "Salvar no Diario", icon: "square.and.arrow.down", style: .primary) {
                     vm.saveToJournal(modelContext: modelContext)

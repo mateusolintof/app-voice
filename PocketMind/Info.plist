@@ -15,7 +15,7 @@
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>2.1</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>LSRequiresIPhoneOS</key>
@@ -37,7 +37,5 @@
 	</array>
     <key>NSMicrophoneUsageDescription</key>
     <string>Precisamos do microfone para ouvir você.</string>
-    <key>NSSpeechRecognitionUsageDescription</key>
-    <string>Precisamos de reconhecimento de fala para processar seus comandos.</string>
 </dict>
 </plist>
