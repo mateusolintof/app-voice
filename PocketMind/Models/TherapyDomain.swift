@@ -164,6 +164,45 @@ struct CommitmentContract: Identifiable, Codable, Hashable {
         self.accountabilityPrompt = accountabilityPrompt
         self.status = status
     }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        // Robust UUID: fallback to new UUID if AI returns invalid string
+        if let uuidString = try? container.decode(String.self, forKey: .id),
+           let uuid = UUID(uuidString: uuidString) {
+            self.id = uuid
+        } else {
+            self.id = UUID()
+        }
+
+        self.statement = try container.decode(String.self, forKey: .statement)
+        self.nextAction = try container.decode(String.self, forKey: .nextAction)
+        self.durationMinutes = (try? container.decode(Int.self, forKey: .durationMinutes)) ?? 15
+        self.accountabilityPrompt = (try? container.decode(String.self, forKey: .accountabilityPrompt)) ?? ""
+
+        // Robust Date: try ISO8601 string first, then fallback
+        if let dateString = try? container.decode(String.self, forKey: .dueAt) {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = formatter.date(from: dateString) {
+                self.dueAt = date
+            } else {
+                // Try without fractional seconds
+                formatter.formatOptions = [.withInternetDateTime]
+                self.dueAt = formatter.date(from: dateString) ?? Date().addingTimeInterval(3600)
+            }
+        } else {
+            self.dueAt = Date().addingTimeInterval(3600)
+        }
+
+        let statusRaw = (try? container.decode(String.self, forKey: .status)) ?? "planned"
+        self.status = CommitmentStatus(rawValue: statusRaw) ?? .planned
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, statement, nextAction, durationMinutes, dueAt, accountabilityPrompt, status
+    }
 }
 
 struct TherapyTurnEnvelope: Codable {

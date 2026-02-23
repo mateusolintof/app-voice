@@ -99,45 +99,45 @@ struct OpenAITherapyEngine: TherapyEngine {
 
     private func buildSystemPrompt(profile: TherapyProfile) -> String {
         let styleIntensity = max(1, min(5, profile.confrontationLevel))
-
-        let modes = profile.defaultModes
-        let methodParts = buildMethodDescription(modes: modes)
-        let methodRules = buildMethodRules(modes: modes)
+        let methodDescription = buildMethodDescription(modes: profile.defaultModes)
 
         return """
         Você é um terapeuta cognitivo pessoal para uso individual, direto e confrontador em Português do Brasil.
-        Método: \(methodParts).
+        Método: \(methodDescription).
         Regras:
         1) Faça diagnóstico cognitivo claro, sem rodeios.
-        \(methodRules)
-        4) Sempre defina ação de até 15 minutos.
-        5) Gere contrato objetivo com horário.
-        6) Tom de confronto nível \(styleIntensity)/5: firme, sem agressividade.
-        7) Responda SOMENTE JSON válido, sem markdown.
-        Estrutura JSON:
+        2) Identifique distorções cognitivas e reestruture pensamentos.
+        3) Separe o que está sob controle do que não está (dicotomia do controle).
+        4) Vincule ação a sentido/propósito pessoal.
+        5) Sempre defina ação de até 15 minutos.
+        6) Gere contrato objetivo com horário.
+        7) Tom de confronto nível \(styleIntensity)/5: firme, sem agressividade.
+        8) Responda SOMENTE JSON válido, sem markdown, sem blocos de código.
+        Estrutura JSON obrigatória (siga exatamente):
         {
-          "rawReality": "string",
+          "rawReality": "frase sobre a realidade crua",
           "diagnosis": {
-            "distortionTags": ["string"],
+            "distortionTags": ["nome_da_distorcao"],
             "controlSplit": {
-              "underControl": ["string"],
-              "notUnderControl": ["string"]
+              "underControl": ["item que o usuario controla"],
+              "notUnderControl": ["item fora do controle"]
             },
-            "avoidanceScore": 0.0
+            "avoidanceScore": 0.5
           },
-          "reframing": "string",
-          "meaningAnchor": "string",
+          "reframing": "reenquadramento orientado a responsabilidade",
+          "meaningAnchor": "ancora de sentido pessoal",
           "contract": {
-            "id": "UUID",
-            "statement": "string",
-            "nextAction": "string",
+            "id": "\(UUID().uuidString)",
+            "statement": "compromisso claro",
+            "nextAction": "acao concreta em ate 15 min",
             "durationMinutes": 15,
-            "dueAt": "ISO8601",
-            "accountabilityPrompt": "string",
+            "dueAt": "\(ISO8601DateFormatter().string(from: Date().addingTimeInterval(3600)))",
+            "accountabilityPrompt": "pergunta de cobranca",
             "status": "planned"
           },
-          "followupQuestion": "string"
+          "followupQuestion": "pergunta para proximo check-in"
         }
+        IMPORTANTE: O campo "id" deve ser um UUID válido (ex: "550e8400-e29b-41d4-a716-446655440000"). O campo "dueAt" deve ser ISO8601 (ex: "2026-02-22T20:00:00Z").
         """
     }
 
@@ -148,40 +148,16 @@ struct OpenAITherapyEngine: TherapyEngine {
 
         var parts: [String] = []
         if modes.contains(.cbt) {
-            parts.append("Terapia Cognitivo-Comportamental (identificar e reestruturar distorções)")
+            parts.append("Terapia Cognitivo-Comportamental")
         }
         if modes.contains(.stoic) {
-            parts.append("Estoicismo (dicotomia do controle, foco no que depende de você)")
+            parts.append("Estoicismo")
         }
         if modes.contains(.logotherapy) {
-            parts.append("Logoterapia (vincular ação a propósito e sentido pessoal)")
+            parts.append("Logoterapia")
         }
 
         return parts.isEmpty ? "CBT + Estoicismo + Logoterapia" : parts.joined(separator: " + ")
-    }
-
-    private func buildMethodRules(modes: [InterventionMode]) -> String {
-        let useAll = modes.contains(.blended) || modes.count >= 3
-
-        var rules: [String] = []
-
-        if useAll || modes.contains(.cbt) {
-            rules.append("2) Identifique distorções cognitivas e reestruture pensamentos disfuncionais.")
-        }
-
-        if useAll || modes.contains(.stoic) {
-            rules.append("2) Use dicotomia do controle explicitamente.")
-        } else {
-            rules.append("2) Separe o que o usuário pode e não pode controlar.")
-        }
-
-        if useAll || modes.contains(.logotherapy) {
-            rules.append("3) Vincule ação a sentido/propósito pessoal.")
-        } else {
-            rules.append("3) Oriente a ação para resultados práticos e mensuráveis.")
-        }
-
-        return rules.joined(separator: "\n")
     }
 
     private func buildTurnPrompt(input: String, context: TherapyContext) -> String {
